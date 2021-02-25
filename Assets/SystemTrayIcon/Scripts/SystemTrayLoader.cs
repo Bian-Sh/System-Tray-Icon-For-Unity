@@ -1,21 +1,24 @@
-﻿using IWshRuntimeLibrary;
-using Microsoft.Win32;
+﻿using Microsoft.Win32;
 using System;
-using System.Collections.Generic;
 using System.Windows.Forms;
 using UnityEngine;
+using static Win32Helper;
 
 /// <summary>
 /// Systemtray menu & actions
 /// </summary>
-public class main : MonoBehaviour
+public class SystemTrayLoader : MonoBehaviour
 {
-
     public SystemTray tray;
+    public string exe;
+    public string icon = "Icons\\icon_run.ico";
 
-    public static main instance = null;
+    public bool useApplicationIcon;
+    public static SystemTrayLoader instance = null;
     void Awake()
     {
+       exe = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+        icon = System.IO.Path.Combine(UnityEngine.Application.streamingAssetsPath ,icon);
         //singleton
         if (instance == null)
         {
@@ -44,7 +47,6 @@ public class main : MonoBehaviour
     /// </summary>
     public void Start()
     {
-        Debug.Log($"{nameof(main)}: {AppDomain.CurrentDomain.BaseDirectory + "\\icons\\icon_run.ico"}");
         tray = CreateSystemTrayIcon();
         if (tray != null)
         {
@@ -60,7 +62,7 @@ public class main : MonoBehaviour
             tray.trayMenu.MenuItems.Add("-");
 
             MenuItem clockType = new MenuItem("Clock Style");
-            gear_clock = tray.trayMenu.MenuItems.Add("Gear", new EventHandler(Clock_Btn));
+            gear_clock = tray.trayMenu.MenuItems.Add("Gear", Clock_Btn);
             circle_clock = tray.trayMenu.MenuItems.Add("Circle", new EventHandler(Clock_Btn));
             simple_clock = tray.trayMenu.MenuItems.Add("Simple", new EventHandler(Clock_Btn));
             clockType.MenuItems.Add(gear_clock);
@@ -95,7 +97,7 @@ public class main : MonoBehaviour
 
             tray.trayIcon.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(Settings_Launcher_Mouse);
 
-            tray.ShowNotification(1000, "Hello..", "I'll just stay in systemtray, right click for more option...");
+            tray.ShowNotification("Hello..", "I'll just stay in systemtray, right click for more option...", 1000);
 
 
             startup.Checked = false;
@@ -109,12 +111,12 @@ public class main : MonoBehaviour
 
     private void Settings_Launcher_Mouse(object sender, MouseEventArgs e)
     {
-        Debug.Log($"{nameof(main)}: tray.trayIcon.MouseDoubleClick ");
+        Debug.Log($"{nameof(SystemTrayLoader)}: tray.trayIcon.MouseDoubleClick ");
     }
 
     private void Weather_Btn(object sender, EventArgs e)
     {
-        Debug.Log($"{nameof(main)}: {((sender as MenuItem).Text)}");
+        Debug.Log($"{nameof(SystemTrayLoader)}: {((sender as MenuItem).Text)}");
     }
 
     #region multimoniotr_menu
@@ -169,7 +171,7 @@ public class main : MonoBehaviour
 
     void MoveToDisplay(int i)
     {
-        Debug.Log($"{nameof(main)}: {i}");
+        Debug.Log($"{nameof(SystemTrayLoader)}: {i}");
     }
 
     #endregion
@@ -256,33 +258,13 @@ public class main : MonoBehaviour
         Debug.Log("Controller script not found");
     }
 
-
-
-    /// <summary>
-    /// Check if current system is at night.
-    /// </summary>
-    /// <returns>
-    /// true if time b/w 6pm - 6am, false otherwise.
-    /// </returns>
-    bool NightTimeCheck()
-    {
-        var time = DateTime.Now.TimeOfDay;
-        var start = new TimeSpan(18, 0, 0);
-        var end = new TimeSpan(6, 0, 0);
-        // If the start time and the end time is in the same day.
-        if (start <= end)
-            return time >= start && time <= end;
-        // The start time and end time is on different days.
-        return time >= start || time <= end;
-    }
-
     /// <summary>
     /// Clock type change traymenu
     /// </summary>
     private void Clock_Btn(System.Object sender, System.EventArgs e)
     {
         string s = (sender as MenuItem).Text;
-        Debug.Log($"{nameof(main)}: {s}");
+        Debug.Log($"{nameof(SystemTrayLoader)}: {s}");
         ClockCheckMark();
     }
 
@@ -322,7 +304,7 @@ public class main : MonoBehaviour
     /// </summary>
     private void Settings_Launcher(System.Object sender, System.EventArgs e)
     {
-        Debug.Log($"{nameof(main)}:{nameof(Settings_Launcher)} ");
+        Debug.Log($"{nameof(SystemTrayLoader)}:{nameof(Settings_Launcher)} ");
     }
 
 
@@ -334,66 +316,21 @@ public class main : MonoBehaviour
     /// </remarks>
     public void Close_Action(System.Object sender, System.EventArgs e)
     {
-        tray.Dispose();
+
 #if UNITY_EDITOR
-            UnityEditor.EditorApplication.isPlaying = false;
+        UnityEditor.EditorApplication.isPlaying = false;
 #else
             UnityEngine.Application.Quit(); //quits unity.
 #endif
     }
 
-    /// <summary>
-    /// Creates application shortcut to link to windows startup in registry.
-    /// </summary>
-    private void CreateShortcut()
+
+    private void OnApplicationQuit()
     {
-        try
-        {
-            WshShell shell = new WshShell();
-            var shortCutLinkFilePath = System.AppDomain.CurrentDomain.BaseDirectory + "\\rePaperStartup.lnk";
-            var windowsApplicationShortcut = (IWshShortcut)shell.CreateShortcut(shortCutLinkFilePath);
-            windowsApplicationShortcut.Description = "shortcut of rePaper Live Wallpaper";
-            windowsApplicationShortcut.WorkingDirectory = System.IO.Directory.GetParent(System.AppDomain.CurrentDomain.BaseDirectory).ToString();
-            windowsApplicationShortcut.TargetPath = System.IO.Directory.GetParent(System.AppDomain.CurrentDomain.BaseDirectory).ToString() + "\\Start.exe";
-            windowsApplicationShortcut.Save();
-        }
-        catch (Exception ex)
-        {
-            Debug.Log(ex.Message);
-        }
+        tray?.Dispose();
     }
 
 
-    /// <summary>
-    /// traymenu - adds startup entry in registry under "rePaper-Unity" name.
-    /// </summary>
-    /// <remarks>
-    /// If disabled in taskmanager, entry gets added but key value will remain disabled.
-    /// </remarks>
-    /// <param name="val">true: set entry, false: delete entry.</param>
-    public void SetStartup(bool val)
-    {
-        //create shortcut first, overwrite if exist with new path.
-        CreateShortcut();
-
-        RegistryKey rk = Registry.CurrentUser.OpenSubKey
-            ("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
-
-        if (val)
-            rk.SetValue(UnityEngine.Application.productName, System.AppDomain.CurrentDomain.BaseDirectory + "\\rePaperStartup.lnk");
-        else
-        {
-            try
-            {
-                rk.DeleteValue(UnityEngine.Application.productName, false);
-            }
-            catch (Exception)
-            {
-                Debug.Log("Regkey Does not exist to delete");
-            }
-        }
-        rk.Close();
-    }
 
     /// <summary>
     /// traymenu run at startup button
@@ -401,28 +338,16 @@ public class main : MonoBehaviour
     private void System_Startup_Btn(System.Object sender, System.EventArgs e)
     {
         runAtStartup = !runAtStartup;
-
         if (runAtStartup == true) //btn checkmark
             startup.Checked = true;
         else
             startup.Checked = false;
-
         SetStartup(runAtStartup);
     }
-    /// <summary>
-    /// Add entry to traymenu.
-    /// </summary>
-    private static List<SystemTray> trays = new List<SystemTray>();
     private bool runAtStartup = false;
 
-    public static SystemTray CreateSystemTrayIcon()
+    public  SystemTray CreateSystemTrayIcon()
     {
-        //  if (!UnityEngine.Application.isEditor)
-        {
-            trays.Add(new SystemTray());
-            return trays[trays.Count - 1];
-        }
-        return null;
+        return new SystemTray(useApplicationIcon?exe:icon);
     }
-
 }

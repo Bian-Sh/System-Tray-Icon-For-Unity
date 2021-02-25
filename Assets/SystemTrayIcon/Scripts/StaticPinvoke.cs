@@ -1,7 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System;
 using System.Text;
 
@@ -9,61 +6,48 @@ using System.Text;
 /// Native C++ windows calls.
 /// reference: https://www.pinvoke.net
 /// </summary>
-public class StaticPinvoke 
+public class StaticPinvoke
 {
-
-    [Flags]
-    public enum SendMessageTimeoutFlags : uint
-    {
-        SMTO_NORMAL = 0x0,
-        SMTO_BLOCK = 0x1,
-        SMTO_ABORTIFHUNG = 0x2,
-        SMTO_NOTIMEOUTIFNOTHUNG = 0x8,
-        SMTO_ERRORONEXIT = 0x20
-    }
-
-    #region HEADLESS_SCRIPT_IMPORTS
-
-    [DllImport("user32.dll", EntryPoint = "FindWindow", SetLastError = true)]
-    public static extern IntPtr FindWindowByCaption(IntPtr zeroOnly, string lpWindowName);
-
-    [DllImport("user32.dll", EntryPoint = "SetWindowPos")]
-    public static extern bool SetWindowPos(IntPtr hwnd, int hWndInsertAfter, int x, int Y, int cx, int cy, int wFlags);
-
+    /// <summary>
+    ///  显示窗口 
+    /// </summary>
+    /// <param name="hWnd"></param>
+    /// <param name="nCmdShow"></param>
+    /// <returns></returns>
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool ShowWindow(IntPtr hWnd, uint nCmdShow);
 
-    #endregion HEADLESS_SCRIPT_IMPORTS
 
     [DllImport("shell32.dll")]
     public static extern IntPtr ExtractAssociatedIcon(IntPtr hInst, StringBuilder lpIconPath, out ushort lpiIcon);
+
+    /// <summary>
+    /// This function retrieves the visibility state of the specified window.
+    /// </summary>
+    /// <param name="hWnd"></param>
+    /// <returns></returns>
     [DllImport("USER32.DLL")]
     public static extern bool IsWindowVisible(IntPtr hWnd);
 
     #region DllImport
-    public delegate bool WNDENUMPROC(IntPtr hwnd, uint lParam);
+
+    /// <summary>
+    /// This function returns the handle to the foreground window — the window with which the user is currently working.
+    /// </summary>
+    /// <returns></returns>
     [DllImport("user32.dll")]
-    static extern IntPtr GetForegroundWindow();
-    [DllImport("user32.dll", EntryPoint = "IsWindow")]
-    public static extern bool IsWindow(IntPtr hWnd);
-    [DllImport("user32.dll", EntryPoint = "EnumWindows", SetLastError = true)]
-    public static extern bool EnumWindows(WNDENUMPROC lpEnumFunc, uint lParam);
-    [DllImport("kernel32.dll", EntryPoint = "SetLastError")]
-    public static extern void SetLastError(uint dwErrCode);
-    [DllImport("user32.dll", EntryPoint = "GetParent", SetLastError = true)]
-    public static extern IntPtr GetParent(IntPtr hWnd);
+    public static extern IntPtr GetForegroundWindow();
 
-    [DllImport("user32.dll", EntryPoint = "GetWindowThreadProcessId")]
-    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, ref uint lpdwProcessId);
-
-    [DllImport("user32.dll")]
-    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, uint dwExtraInfo);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern bool GetWindowPlacement(IntPtr hWnd, out WINDOWPLACEMENT lpwndpl);
-
+    /// <summary>
+    /// This function puts the thread that created the specified window into the foreground and activates the window.
+    /// </summary>
+    /// <param name="hWnd"></param>
+    /// <returns></returns>
     [DllImport("user32.dll", SetLastError = true)]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+
+
     #endregion
 }

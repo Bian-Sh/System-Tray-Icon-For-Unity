@@ -4,6 +4,8 @@ using System.Windows.Forms;
 using System.Drawing;
 using UnityEngine;
 using System.Text;
+using System.IO;
+using System.Drawing.Imaging;
 
 public class SystemTray : IDisposable
 {
@@ -13,20 +15,35 @@ public class SystemTray : IDisposable
 
     private List<Action> actions = new List<Action>();
 
-    public SystemTray()
+    public SystemTray(string iconPath)
     {
         trayMenu = new System.Windows.Forms.ContextMenu();
         trayIcon = new NotifyIcon();
-        //trayIcon.Text = UnityEngine.Application.productName;
-        ushort uicon;
-        StringBuilder strB = new StringBuilder(UnityEngine.Application.streamingAssetsPath + "\\Icons\\icon_run.ico");
-        IntPtr handle = StaticPinvoke.ExtractAssociatedIcon(IntPtr.Zero, strB, out uicon);
-        ico_run = Icon.FromHandle(handle);
-        trayIcon.Icon = ico_run;
-        strB.Clear();
         trayIcon.ContextMenu = trayMenu;
+        SetTrayIcon(iconPath);
     }
 
+    public void SetTrayIcon(string resPath)
+    {
+        if (resPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        {
+            var icon =Icon.ExtractAssociatedIcon(resPath);//有几率获取不到？
+            
+            Debug.Log($"{nameof(SystemTray)}: use exe icon {icon is null}");
+            var bmp = icon.ToBitmap();
+            bmp.Save(@"E:\Unity\Project\System Tray Icon For Unity\Build\11.bmp", ImageFormat.Bmp );
+            trayIcon.Icon = icon;
+        }
+        else
+        {
+            Debug.Log($"{nameof(SystemTray)}: use custom icon");
+            var strB = new StringBuilder(resPath);
+            var handle = StaticPinvoke.ExtractAssociatedIcon(IntPtr.Zero, strB, out _);
+            trayIcon.Icon = Icon.FromHandle(handle);
+            strB.Clear();
+        }
+
+    }
     public void AddItem(string label, Action function)
     {
         actions.Add(function);
@@ -49,13 +66,13 @@ public class SystemTray : IDisposable
     /// <summary>
     /// Displays native windows notification.
     /// </summary>
-    public void ShowNotification(int duration, string title, string text)
+    public void ShowNotification(string title, string text, int duration = 5000)
     {
         trayIcon.Visible = true;
         trayIcon.BalloonTipTitle = title;
         trayIcon.BalloonTipText = text;
         trayIcon.BalloonTipIcon = ToolTipIcon.Info;
-        trayIcon.ShowBalloonTip(5000);
+        trayIcon.ShowBalloonTip(duration);
     }
 
     private void OnAdd(object sender, EventArgs e)
